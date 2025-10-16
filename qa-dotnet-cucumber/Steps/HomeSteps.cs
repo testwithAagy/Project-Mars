@@ -27,8 +27,6 @@ namespace qa_dotnet_cucumber.Steps
 
         }
 
-
-        //hitting the URL on the browser and landing on the home page/Landing page
         
         [Given(@"I am on the Mars application landing page")]
         public void GivenIAmOnTheMarsApplicationLandingPage()

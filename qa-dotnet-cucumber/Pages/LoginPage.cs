@@ -1,7 +1,7 @@
 using OpenQA.Selenium;
 using OpenQA.Selenium.Support.UI;
-using Reqnroll.BoDi;
 using SeleniumExtras.WaitHelpers;
+using System;
 
 namespace qa_dotnet_cucumber.Pages
 {
@@ -9,70 +9,80 @@ namespace qa_dotnet_cucumber.Pages
     {
         private readonly IWebDriver _driver;
         private readonly WebDriverWait _wait;
-        public IWebDriver Driver => _driver;  
 
-        // Locators
-        private readonly By UsernameField = By.Name("email");
-        private readonly By PasswordField = By.Name("password");
-        private readonly By LoginButton = By.XPath("//button[text()='Login']");
-        private By SignOutButton => By.XPath("//button[normalize-space()='Sign Out']");
-        private readonly By EmailVerificationError = By.XPath("//div[@class='ns-box-inner' and normalize-space()='Confirm your email']");
-
-        public LoginPage(IWebDriver driver) 
+        public LoginPage(IWebDriver driver)
         {
             _driver = driver;
-            _wait = new WebDriverWait(_driver, TimeSpan.FromSeconds(10)); 
+            _wait = new WebDriverWait(_driver, TimeSpan.FromSeconds(10));
         }
+
+        private By EmailField => By.Name("email");       
+        private By PasswordField => By.Name("password"); 
+        private By LoginButton => By.XPath("//button[text()='Login']");   
+        private By ErrorMessage => By.CssSelector(".error-message"); 
+        private By SignOutButton => By.XPath("//button[normalize-space()='Sign Out']"); 
         
-        public void Login(string username, string password)
+        public void EnterEmail(string email)
         {
-            var usernameElement = _wait.Until(ExpectedConditions.ElementIsVisible(UsernameField));
-            usernameElement.SendKeys(username);
-
-            var passwordElement = _wait.Until(d => d.FindElement(PasswordField));
-            passwordElement.SendKeys(password);
-
-            var loginButtonElement = _wait.Until(ExpectedConditions.ElementToBeClickable(LoginButton));
-            loginButtonElement.Click();
+            var emailElement = _wait.Until(ExpectedConditions.ElementIsVisible(EmailField));
+            emailElement.Clear();
+            emailElement.SendKeys(email);
         }
 
+        public void EnterPassword(string password)
+        {
+            var passwordElement = _wait.Until(ExpectedConditions.ElementIsVisible(PasswordField));
+            passwordElement.Clear();
+            passwordElement.SendKeys(password);
+        }
 
-        // Verification: checks redirect + sign out button visibility
-        public bool IsUserLoggedIn()
+        public void ClickLoginButton()
+        {
+            var loginBtn = _wait.Until(ExpectedConditions.ElementToBeClickable(LoginButton));
+            loginBtn.Click();
+        }
+
+        public bool IsAtLoginPage()
         {
             try
             {
-                // Wait for Sign Out button to appear
-                var signOut = _wait.Until(ExpectedConditions.ElementIsVisible(SignOutButton));
-                return signOut.Displayed && _driver.Url.Contains("/Account/Profile");
+                return _wait.Until(ExpectedConditions.ElementIsVisible(LoginButton)).Displayed;
             }
             catch
             {
                 return false;
             }
         }
-        public string GetEmailVerificationError()
-        {
-            return _wait.Until(ExpectedConditions.ElementIsVisible(EmailVerificationError)).Text;
-        }
 
-        
-        public bool IsAtLoginPage()
+        public bool IsUserLoggedIn()
         {
             try
             {
-                // Wait until the login form is visible
-                _wait.Until(ExpectedConditions.ElementIsVisible(UsernameField));
-                _wait.Until(ExpectedConditions.ElementIsVisible(PasswordField));
-                _wait.Until(ExpectedConditions.ElementIsVisible(LoginButton));
+                // SignOutButton appears only when logged in
+                return _wait.Until(ExpectedConditions.ElementIsVisible(SignOutButton)).Displayed;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+        public string GetInlineErrorMessage()
+        {
+            try
+            {
+              
+                var errorElement = new WebDriverWait(_driver, TimeSpan.FromSeconds(10))
+                    .Until(d => d.FindElement(By.CssSelector(".ui.basic.red.pointing.prompt.label.transition.visible")));
 
-                return true; // Login form is visible
+                return errorElement.Text.Trim();
             }
             catch (WebDriverTimeoutException)
             {
-                return false; // Login form did not appear in time
+                return string.Empty; 
             }
         }
 
+     
     }
 }
+

@@ -16,18 +16,16 @@ namespace qa_dotnet_cucumber.Pages
             _wait = new WebDriverWait(_driver, TimeSpan.FromSeconds(10));
         }
 
-        // Locators
-
         private readonly By SignInButton = By.XPath("//a[text()='Sign In']");
         private readonly By JoinButton = By.XPath("//button[contains(text(),'Join')]");
         private readonly By LoginForm = By.Name("email"); 
         private readonly By JoinForm = By.Name("firstName");
         
         
-        // Sign in Methods
+      
         public void ClickSignIn()
         {
-            //_wait.Until(ExpectedConditions.ElementToBeClickable(SignInButton)).Click();
+           
             var element = new WebDriverWait(_driver, TimeSpan.FromSeconds(10))
                       .Until(SeleniumExtras.WaitHelpers.ExpectedConditions.ElementToBeClickable(SignInButton));
             element.Click();
@@ -43,8 +41,6 @@ namespace qa_dotnet_cucumber.Pages
             return _wait.Until(ExpectedConditions.ElementIsVisible(LoginForm)).Displayed;
         }
 
-
-        // Join methods
         public void ClickJoin()
         {
             _wait.Until(ExpectedConditions.ElementToBeClickable(JoinButton)).Click();

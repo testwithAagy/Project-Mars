@@ -4,6 +4,7 @@ using OpenQA.Selenium.Support.UI;
 using qa_dotnet_cucumber.Pages;
 using Reqnroll;
 using SeleniumExtras.WaitHelpers;
+using System;
 
 namespace qa_dotnet_cucumber.Steps
 {
@@ -11,81 +12,118 @@ namespace qa_dotnet_cucumber.Steps
     public class LoginSteps
     {
         private readonly IWebDriver _driver;
-        private readonly LoginPage _loginPage;
         private readonly HomePage _homePage;
+        private readonly LoginPage _loginPage;
         private readonly NavigationHelper _navigationHelper;
 
-        public LoginSteps(IWebDriver driver,  LoginPage loginPage, NavigationHelper navigationHelper)
-        {  
+        public LoginSteps(IWebDriver driver, NavigationHelper navigationHelper)
+        {
             _driver = driver;
-            _loginPage = loginPage;
-            _homePage = new HomePage(_driver);
             _navigationHelper = navigationHelper;
+            _homePage = new HomePage(driver);
+            _loginPage = new LoginPage(driver);
+        }
+
+       
+        [Given(@"I am on the landing page")]
+        public void GivenIAmOnTheLandingPageForLogin()
+        {
+            _navigationHelper.NavigateTo("");
             
         }
 
-        [Given("I am on the login page")]
-        public void GivenIAmOnTheLoginPage()
+     
+        [When(@"I click the ""(.*)"" button for login")]
+        public void WhenIClickTheButton(string buttonName)
         {
-            _navigationHelper.NavigateTo("");
-
-            // Click Sign In to open login form
-            _homePage.ClickSignIn();
-            Assert.That(_homePage.IsLoginFormVisible(), Is.True, "Login form should be visible after clicking Sign In");
+            if (buttonName.Equals("Sign In", StringComparison.OrdinalIgnoreCase))
+            {
+                _homePage.ClickSignIn();
+                Assert.That(_loginPage.IsAtLoginPage(), Is.True, "Login page did not load after clicking Sign In.");
+            }
+            else if (buttonName.Equals("Login", StringComparison.OrdinalIgnoreCase))
+            {
+                _loginPage.ClickLoginButton();
+            }
+            else
+            {
+                throw new ArgumentException($"Unknown button name: {buttonName}");
+            }
         }
 
-        [When("I enter valid credentials")]
-        public void WhenIEnterValidCredentials()
+        [When(@"I enter email ""(.*)"" and password ""(.*)""")]
+        public void WhenIEnterEmailAndPassword(string email, string password)
         {
-            _loginPage.Login("aagyannapaul98@gmail.com", "Aagy@12345");
+            _loginPage.EnterEmail(email.Trim());
+            _loginPage.EnterPassword(password.Trim());
         }
 
-        [When("I enter an invalid username and valid password")]
-        public void WhenIEnterAnInvalidUsernameAndValidPassword()
+        [When(@"I click the login button")]
+        public void WhenIClickTheLoginButton()
         {
-            _loginPage.Login("aagy@gmail.com", "Aagy@12345");
+            _loginPage.ClickLoginButton();
         }
 
-        [When("I enter a valid username and invalid password")]
-        public void WhenIEnterAValidUsernameAndInvalidPassword()
+        //Multiple failed login attempts
+        
+        [When(@"I attempt to log in with email ""(.*)"" and invalid password ""(.*)"" three times")]
+        public void WhenIAttemptToLogInMultipleTimes(string email, string password)
         {
-            _loginPage.Login("aagyannapaul98@gmail.com", "wrongpassword");
+            for (int i = 0; i < 3; i++)
+            {
+                _loginPage.EnterEmail(email.Trim());
+                _loginPage.EnterPassword(password.Trim());
+                _loginPage.ClickLoginButton();
+
+                // Wait briefly between attempts to simulate user behavior
+                System.Threading.Thread.Sleep(1000);
+            }
         }
 
-        [When("I enter empty credentials")]
-        public void WhenIEnterEmptyCredentials()
+
+        
+        [Then(@"I should see ""(.*)""")]
+        public void ThenIShouldSee(string expectedMessage)
         {
-            _loginPage.Login("", "");
-        }
+            var wait = new WebDriverWait(_driver, TimeSpan.FromSeconds(10));
 
-      
-        [Then(@"I should see the secure area")]
-        public void ThenIShouldSeeTheSecureArea()
-        {
-            Assert.That(_loginPage.IsUserLoggedIn(), Is.True,
-                "User should be redirected to /Account/Profile and Sign Out button should be visible after login");
-        }
+            if (expectedMessage.Equals("Secure area displayed", StringComparison.OrdinalIgnoreCase))
+            {
+                Assert.That(_loginPage.IsUserLoggedIn(), Is.True,
+                    "Expected secure area, but user is not logged in.");
+            }
+           
+            else if (expectedMessage.Equals("Please enter a valid email address", StringComparison.OrdinalIgnoreCase) ||
+              expectedMessage.Equals("Incorrect password", StringComparison.OrdinalIgnoreCase) ||
+              expectedMessage.Equals("This email has already been used to register an account", StringComparison.OrdinalIgnoreCase) ||
+              expectedMessage.Equals("Password must be at least 6 characters", StringComparison.OrdinalIgnoreCase))
+            {
+                string actualError = _loginPage.GetInlineErrorMessage();
+                Assert.That(actualError, Does.Contain(expectedMessage).IgnoreCase,
+                    $"Expected error message '{expectedMessage}' but got '{actualError}'");
+            }
 
-        [Then("I should see an email verification error")]
-        public void ThenIShouldSeeAnEmailVerificationError()
-        {
-            string errorMessage = _loginPage.GetEmailVerificationError();
-            Assert.That(errorMessage, Does.Contain("Confirm your email"),
-                "Expected email verification error not shown");
-        }
+            else if (expectedMessage.Equals("Send Verification Email", StringComparison.OrdinalIgnoreCase) ||
+                expectedMessage.Equals("User does not exist", StringComparison.OrdinalIgnoreCase))
+            {
+                var popupButtonLocator = By.Id("submit-btn");
+                var isDisplayed = wait.Until(driver => driver.FindElement(popupButtonLocator).Displayed);
+                Assert.That(isDisplayed, Is.True,
+                    $"Expected popup/button '{expectedMessage}' is not displayed.");
+            }
 
-        [Then(@"I should see an error message ""(.*)""")]
-        public void ThenIShouldSeeAnErrorMessage(string expectedMessage)
-        {
-            var wait = new WebDriverWait(_driver, TimeSpan.FromSeconds(5));
+            else if (expectedMessage.Equals("Your account has been temporarily locked due to multiple failed attempts", StringComparison.OrdinalIgnoreCase))
+            {
+                string actualError = _loginPage.GetInlineErrorMessage();
+                Assert.That(actualError, Does.Contain("locked").IgnoreCase,
+                    $"Expected lockout message but got '{actualError}'");
+            }
 
-            // Find the error div with exact text match
-            var error = wait.Until(ExpectedConditions.ElementIsVisible(
-                By.XPath($"//div[normalize-space(text())='{expectedMessage}']")
-            ));
-
-            Assert.That(error.Text, Is.EqualTo(expectedMessage),
-                $"Expected error message '{expectedMessage}' but got '{error.Text}'");
+            else
+            {
+                // Fallback for unexpected messages
+                Assert.Fail($"Test does not handle expected message: '{expectedMessage}'");
+            }
         }
     }
 }

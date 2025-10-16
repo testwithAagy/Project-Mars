@@ -1,4 +1,5 @@
-﻿Feature: Landing Page/ Home Page
+﻿@HomePage
+Feature: Landing Page/ Home Page
   As a user, I want to access the Mars application landing page / Home page.
   So that I can navigate to login or join
 

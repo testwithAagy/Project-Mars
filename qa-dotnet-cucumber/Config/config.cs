@@ -5,6 +5,10 @@ namespace qa_dotnet_cucumber.Config
         public BrowserSettings Browser { get; set; }
         public ReportSettings Report { get; set; }
         public EnvironmentSettings Environment { get; set; }
+
+        // New properties for dynamic test users
+        public string TestUserEmail { get; set; } = "autotest_user@test.com";
+        public string TestUserPassword { get; set; } = "Pass123!";
     }
 
     public class BrowserSettings
